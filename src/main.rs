@@ -1,5 +1,4 @@
 use nannou::prelude::*;
-use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
 
 mod engine;
 
@@ -7,7 +6,6 @@ use crate::engine::Engine;
 
 struct Model {
     engine: Engine,
-    runtime: Runtime,
 }
 
 fn main() {
@@ -21,22 +19,18 @@ fn main() {
 fn model(_app: &App) -> Model {
     let engine = Engine::new();
 
-    let runtime = RuntimeBuilder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    Model { engine, runtime }
+    Model { engine }
 }
 
-fn update(_app: &App, model: &mut Model, _update: Update) {
+fn update(app: &App, model: &mut Model, _update: Update) {
     model
-        .runtime
-        .block_on(model.engine.run(
+        .engine
+        .run(
             "
-            console.log('hello!')
+            console.log(time)
             ",
-        ))
+            app.time,
+        )
         .unwrap();
 }
 
