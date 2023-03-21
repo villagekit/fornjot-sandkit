@@ -1,19 +1,21 @@
-((globalThis) => {
-  const { core } = Deno
+const { core } = Deno
+const { ops } = core
 
-  function argsToMessage(...args) {
-    return args.map((arg) => JSON.stringify(arg)).join(" ");
-  }
+function argsToMessage(...args) {
+  return args.map((arg) => JSON.stringify(arg)).join(" ");
+}
 
-  globalThis.console = {
-    log: (...args) => {
-      core.print(`${argsToMessage(...args)}\n`, false);
-    },
-  };
+const console = {
+  log: (...args) => {
+    core.print(`${argsToMessage(...args)}\n`, false);
+  },
+};
 
-  globalThis.shapes = {
-    rect: (x, y) => {
-      return core.ops.op_shapes_rect(x, y)
-    },
-  }
-})(globalThis);
+const shapes = {
+  rect: (x, y) => {
+    return ops.op_shapes_rect(x, y)
+  },
+}
+
+globalThis.console = console
+globalThis.shapes = shapes
