@@ -34,7 +34,7 @@ impl Engine {
             .unwrap();
 
         let main_mod_url = deno_resolve_url("file:///main.js").unwrap();
-        let mod_id = self.js.load_main_module(&main_mod_url, Some(code)).await?;
+        let mod_id = self.js.load_side_module(&main_mod_url, Some(code)).await?;
         let result = self.js.mod_evaluate(mod_id);
         self.js.run_event_loop(false).await?;
 
