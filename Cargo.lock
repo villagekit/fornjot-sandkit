@@ -1248,6 +1248,7 @@ dependencies = [
  "anyhow",
  "deno_core",
  "nannou",
+ "serde",
  "tokio",
 ]
 

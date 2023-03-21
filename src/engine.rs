@@ -1,24 +1,27 @@
 use anyhow::Error;
 use deno_core::{
-    error::AnyError as DenoError, include_js_files, op, resolve_url as deno_resolve_url,
-    Extension as DenoExtension, FsModuleLoader as DenoFsModuleLoader, JsRuntime as DenoRuntime,
-    RuntimeOptions as DenoRuntimeOptions,
+    error::AnyError as DenoError, include_js_files, op, resolve_url, Extension, FsModuleLoader,
+    JsRuntime, OpState, RuntimeOptions,
 };
+use nannou::color::PLUM;
 use std::rc::Rc;
 
 pub struct Engine {
-    js: DenoRuntime,
+    js: JsRuntime,
 }
 
 impl Engine {
-    pub fn new() -> Self {
-        let js_extension = DenoExtension::builder("runjs")
+    pub fn new(draw: nannou::Draw) -> Self {
+        let js_extension = Extension::builder("runjs")
             .esm(include_js_files!("runtime.js",))
             .ops(vec![op_shapes_rect::decl()])
+            .state(move |state| {
+                state.put::<nannou::Draw>(draw.clone());
+            })
             .build();
 
-        let mut js = DenoRuntime::new(DenoRuntimeOptions {
-            module_loader: Some(Rc::new(DenoFsModuleLoader)),
+        let js = JsRuntime::new(RuntimeOptions {
+            module_loader: Some(Rc::new(FsModuleLoader)),
             extensions: vec![js_extension],
             ..Default::default()
         });
@@ -33,9 +36,9 @@ impl Engine {
             .execute_script("[mycelia:time.js]", time_script.as_ref())
             .unwrap();
 
-        let main_mod_url = deno_resolve_url("file:///main.js").unwrap();
+        let main_mod_url = resolve_url("file:///main.js").unwrap();
         let mod_id = self.js.load_side_module(&main_mod_url, Some(code)).await?;
-        let result = self.js.mod_evaluate(mod_id);
+        let _result = self.js.mod_evaluate(mod_id);
         self.js.run_event_loop(false).await?;
 
         Ok(())
@@ -43,6 +46,10 @@ impl Engine {
 }
 
 #[op]
-fn op_shapes_rect(x: f64, y: f64) -> Result<(), DenoError> {
+fn op_shapes_rect(state: &mut OpState, x: f32, y: f32) -> Result<(), DenoError> {
+    let draw = state.borrow::<nannou::Draw>().clone();
+
+    draw.rect().x_y(x, y).w(0.1_f32).color(PLUM);
+
     Ok(())
 }

@@ -9,4 +9,5 @@ edition = "2021"
 anyhow = "1.0.70"
 deno_core = "0.175.0"
 nannou = "0.18.1"
+serde = "1.0.158"
 tokio = { version = "1.26.0", features = ["full"] }
