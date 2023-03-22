@@ -65,7 +65,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     draw.reset();
     draw.background().color(BLUE);
 
-    model.engine.run(app.time).unwrap();
+    model.runtime.block_on(model.engine.run(app.time)).unwrap();
 
     match model.fps {
         Some(fps) => model.fps = Some((app.fps() + fps) / 2.0),

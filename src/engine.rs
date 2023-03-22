@@ -45,31 +45,37 @@ impl Engine {
         Ok(())
     }
 
-    pub fn run(&mut self, time: f32) -> Result<(), Error> {
+    pub async fn run(&mut self, time: f32) -> Result<(), Error> {
         let module_id = self.module_id.unwrap();
 
         let module_ns = self.js.get_module_namespace(module_id).unwrap();
         let isolate = self.js.v8_isolate();
 
         let module_ns = module_ns.open(isolate);
-        let mut scope = &mut self.js.handle_scope();
+        let result = {
+            let scope = &mut self.js.handle_scope();
 
-        let main_export_name = v8::String::new(&mut scope, "main").unwrap();
-        let main_export = module_ns.get(&mut scope, main_export_name.into()).unwrap();
-        let main_export_function = v8::Local::<v8::Function>::try_from(main_export)?;
+            let main_export_name = v8::String::new(scope, "main").unwrap();
+            let main_export = module_ns.get(scope, main_export_name.into()).unwrap();
+            let main_export_function = v8::Local::<v8::Function>::try_from(main_export)?;
 
-        let time_js = v8::Number::new(&mut scope, time as f64);
-        let this = v8::undefined(&mut scope).into();
+            let time_js = v8::Number::new(scope, time as f64);
+            let this = v8::undefined(scope).into();
 
-        main_export_function
-            .call(&mut scope, this, &[time_js.into()])
-            .unwrap();
+            let result = main_export_function
+                .call(scope, this, &[time_js.into()])
+                .unwrap();
+
+            v8::Global::new(scope, result)
+        };
+
+        self.js.resolve_value(result).await?;
 
         Ok(())
     }
 }
 
-#[op]
+#[op(fast)]
 fn op_shapes_rect(state: &mut OpState, x: f32, y: f32) -> Result<(), DenoError> {
     let draw = state.borrow::<nannou::Draw>().clone();
 
