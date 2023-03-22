@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Context, Error, Result};
 use deno_core::{
     error::AnyError as DenoError, include_js_files, op, url::Url, v8, Extension, JsRuntime,
     ModuleId, OpState, RuntimeOptions,
@@ -47,25 +47,34 @@ impl Engine {
     }
 
     pub async fn run(&mut self, time: f32) -> Result<(), Error> {
-        let module_id = self.module_id.unwrap();
+        let module_id = self
+            .module_id
+            .context("Module id not available. Have you called .compile yet?")?;
 
-        let module_ns = self.js.get_module_namespace(module_id).unwrap();
+        let module_ns = self
+            .js
+            .get_module_namespace(module_id)
+            .with_context(|| format!("Module id not loaded: {}", module_id))?;
         let isolate = self.js.v8_isolate();
 
         let module_ns = module_ns.open(isolate);
         let result = {
             let scope = &mut self.js.handle_scope();
 
-            let main_export_name = v8::String::new(scope, "main").unwrap();
-            let main_export = module_ns.get(scope, main_export_name.into()).unwrap();
-            let main_export_function = v8::Local::<v8::Function>::try_from(main_export)?;
+            let main_export_name = v8::String::new(scope, "main")
+                .context("Unable to create JavaScript string \"main\".")?;
+            let main_export = module_ns
+                .get(scope, main_export_name.into())
+                .context("Unable to get export named \"main\" from module.")?;
+            let main_export_function = v8::Local::<v8::Function>::try_from(main_export)
+                .context("Export named \"main\" is not a function")?;
 
             let time_js = v8::Number::new(scope, time as f64);
             let this = v8::undefined(scope).into();
 
             let result = main_export_function
                 .call(scope, this, &[time_js.into()])
-                .unwrap();
+                .context("Unable to call main export function")?;
 
             v8::Global::new(scope, result)
         };
