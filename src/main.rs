@@ -1,8 +1,10 @@
+use deno_core::resolve_path;
 use futures_lite::future;
 use nannou::draw::Draw;
 use nannou::prelude::*;
 
 mod engine;
+mod loader;
 
 use crate::engine::Engine;
 
@@ -24,25 +26,10 @@ fn model(app: &App) -> Model {
     let draw = app.draw();
     let mut engine = Engine::new(draw.clone());
 
-    future::block_on(
-        engine.compile(
-            "
-export function main(time) {
-    const n = 5000
-    const t = time * 0.1
-    for (let i = 0; i < n; i++) {
-        let a = i / n
-        let b = (a + t) % 1
-        let x = Math.sin(b * Math.PI * 16) * 500 * a
-        let y = Math.cos(b * Math.PI * 16) * 500 * a
-        shapes.rect(x, y)
-    }
-}
-"
-            .to_string(),
-        ),
-    )
-    .unwrap();
+    let current_dir = std::env::current_dir().expect("Unable to get CWD");
+    let sketch_path = resolve_path("./sketches/demo.ts", &current_dir).unwrap();
+
+    future::block_on(engine.compile(sketch_path)).unwrap();
 
     Model {
         engine,

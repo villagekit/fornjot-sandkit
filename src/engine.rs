@@ -1,10 +1,12 @@
 use anyhow::Error;
 use deno_core::{
-    error::AnyError as DenoError, include_js_files, op, resolve_url, v8, Extension, FsModuleLoader,
-    JsRuntime, ModuleId, OpState, RuntimeOptions,
+    error::AnyError as DenoError, include_js_files, op, url::Url, v8, Extension, JsRuntime,
+    ModuleId, OpState, RuntimeOptions,
 };
 use nannou::color::PLUM;
 use std::rc::Rc;
+
+use crate::loader::ModuleLoader;
 
 pub struct Engine {
     js: JsRuntime,
@@ -22,7 +24,7 @@ impl Engine {
             .build();
 
         let js = JsRuntime::new(RuntimeOptions {
-            module_loader: Some(Rc::new(FsModuleLoader)),
+            module_loader: Some(Rc::new(ModuleLoader)),
             extensions: vec![js_extension],
             ..Default::default()
         });
@@ -33,9 +35,8 @@ impl Engine {
         }
     }
 
-    pub async fn compile(&mut self, code: String) -> Result<(), Error> {
-        let module_url = resolve_url("file:///main.js").unwrap();
-        let module_id = self.js.load_side_module(&module_url, Some(code)).await?;
+    pub async fn compile(&mut self, module_url: Url) -> Result<(), Error> {
+        let module_id = self.js.load_side_module(&module_url, None).await?;
         let receiver = self.js.mod_evaluate(module_id);
         self.js.run_event_loop(false).await?;
         let _ = receiver.await;
