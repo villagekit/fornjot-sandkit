@@ -1,6 +1,6 @@
+use futures_lite::future;
 use nannou::draw::Draw;
 use nannou::prelude::*;
-use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
 
 mod engine;
 
@@ -8,7 +8,6 @@ use crate::engine::Engine;
 
 struct Model {
     engine: Engine,
-    runtime: Runtime,
     draw: Draw,
     fps: Option<f32>,
 }
@@ -25,15 +24,9 @@ fn model(app: &App) -> Model {
     let draw = app.draw();
     let mut engine = Engine::new(draw.clone());
 
-    let runtime = RuntimeBuilder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    runtime
-        .block_on(
-            engine.compile(
-                "
+    future::block_on(
+        engine.compile(
+            "
 export function main(time) {
     const n = 5000
     const t = time * 0.1
@@ -46,14 +39,13 @@ export function main(time) {
     }
 }
 "
-                .to_string(),
-            ),
-        )
-        .unwrap();
+            .to_string(),
+        ),
+    )
+    .unwrap();
 
     Model {
         engine,
-        runtime,
         draw: draw.clone(),
         fps: None,
     }
@@ -65,7 +57,7 @@ fn update(app: &App, model: &mut Model, _update: Update) {
     draw.reset();
     draw.background().color(BLUE);
 
-    model.runtime.block_on(model.engine.run(app.time)).unwrap();
+    future::block_on(model.engine.run(app.time)).unwrap();
 
     /*
     let n = 5000;
