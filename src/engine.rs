@@ -1,13 +1,16 @@
 use anyhow::Error;
 use deno_core::{
-    error::AnyError as DenoError, include_js_files, op, resolve_url, Extension, FsModuleLoader,
-    JsRuntime, OpState, RuntimeOptions,
+    error::AnyError as DenoError,
+    include_js_files, op, resolve_url,
+    v8::{self, HandleScope, Local},
+    Extension, FsModuleLoader, JsRuntime, ModuleId, OpState, RuntimeOptions,
 };
 use nannou::color::PLUM;
 use std::rc::Rc;
 
 pub struct Engine {
     js: JsRuntime,
+    module_id: Option<ModuleId>,
 }
 
 impl Engine {
@@ -26,20 +29,46 @@ impl Engine {
             ..Default::default()
         });
 
-        Self { js }
+        Self {
+            js,
+            module_id: None,
+        }
     }
 
-    pub async fn run(&mut self, code: String, time: f32) -> Result<(), Error> {
-        // set current time in JavaScript global context
-        let time_script = format!("globalThis.time = {}", time);
-        self.js
-            .execute_script("[mycelia:time.js]", time_script.as_ref())
+    pub async fn compile(&mut self, code: String) -> Result<(), Error> {
+        let module_url = resolve_url("file:///main.js").unwrap();
+        let module_id = self.js.load_side_module(&module_url, Some(code)).await?;
+        let receiver = self.js.mod_evaluate(module_id);
+        self.js.run_event_loop(false).await?;
+        let _ = receiver.await;
+
+        self.module_id = Some(module_id);
+
+        Ok(())
+    }
+
+    pub fn run(&mut self, time: f32) -> Result<(), Error> {
+        let module_ns = self
+            .js
+            .get_module_namespace(self.module_id.unwrap())
             .unwrap();
 
-        let main_mod_url = resolve_url("file:///main.js").unwrap();
-        let mod_id = self.js.load_side_module(&main_mod_url, Some(code)).await?;
-        let _result = self.js.mod_evaluate(mod_id);
-        self.js.run_event_loop(false).await?;
+        let context = self.js.global_context();
+        let isolate = self.js.v8_isolate();
+
+        let module_ns = module_ns.open(isolate);
+        let mut scope = HandleScope::with_context(isolate, context);
+
+        let main_export_name = v8::String::new(&mut scope, "main").unwrap();
+        let main_export = module_ns.get(&mut scope, main_export_name.into()).unwrap();
+
+        let time_js = v8::Number::new(&mut scope, time as f64);
+        let null = v8::null(&mut scope).into();
+
+        let main_export_function = Local::<v8::Function>::try_from(main_export).unwrap();
+        main_export_function
+            .call(&mut scope, null, &[time_js.into()])
+            .unwrap();
 
         Ok(())
     }
@@ -49,7 +78,7 @@ impl Engine {
 fn op_shapes_rect(state: &mut OpState, x: f32, y: f32) -> Result<(), DenoError> {
     let draw = state.borrow::<nannou::Draw>().clone();
 
-    draw.rect().x_y(x, y).w(0.1_f32).color(PLUM);
+    draw.rect().x_y(x, y).w_h(4_f32, 4_f32).color(PLUM);
 
     Ok(())
 }

@@ -10,6 +10,7 @@ struct Model {
     engine: Engine,
     runtime: Runtime,
     draw: Draw,
+    fps: Option<f32>,
 }
 
 fn main() {
@@ -22,45 +23,68 @@ fn main() {
 
 fn model(app: &App) -> Model {
     let draw = app.draw();
-    let engine = Engine::new(draw.clone());
+    let mut engine = Engine::new(draw.clone());
 
     let runtime = RuntimeBuilder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
 
+    runtime
+        .block_on(
+            engine.compile(
+                "
+export function main(time) {
+    const n = 5000
+    const t = time * 0.1
+    for (let i = 0; i < n; i++) {
+        let a = i / n
+        let b = (a + t) % 1
+        let x = Math.sin(b * Math.PI * 16) * 500 * a
+        let y = Math.cos(b * Math.PI * 16) * 500 * a
+        shapes.rect(x, y)
+    }
+}
+"
+                .to_string(),
+            ),
+        )
+        .unwrap();
+
     Model {
         engine,
         runtime,
         draw: draw.clone(),
+        fps: None,
     }
 }
 
 fn update(app: &App, model: &mut Model, _update: Update) {
-    model.draw.background().color(BLACK);
+    let draw = &model.draw;
 
-    model
-        .runtime
-        .block_on(
-            model.engine.run(
-                "
-const n = 5000
-const t = time * 0.1
-for (let i = 0; i < n; i++) {
-    const x = Math.sin(n + t)
-    const y = Math.cos(n + t)
-    rect(x, y)
-}
-"
-                .to_string(),
-                app.time,
-            ),
-        )
-        .unwrap();
+    draw.reset();
+    draw.background().color(BLUE);
+
+    model.engine.run(app.time).unwrap();
+
+    match model.fps {
+        Some(fps) => model.fps = Some((app.fps() + fps) / 2.0),
+        None => model.fps = Some(app.fps()),
+    }
 }
 
 fn event(_app: &App, _model: &mut Model, _event: Event) {}
 
 fn view(app: &App, model: &Model, frame: Frame) {
-    model.draw.to_frame(app, &frame).unwrap();
+    let draw = &model.draw;
+
+    let fps = model.fps.unwrap_or(0.0).round();
+
+    let win = app.window_rect();
+    let win_p = win.pad(25.0);
+
+    let rect = Rect::from_w_h(0.0, 0.0).top_left_of(win_p);
+    draw.text(&fps.to_string()).xy(rect.xy()).font_size(20);
+
+    draw.to_frame(app, &frame).unwrap();
 }
