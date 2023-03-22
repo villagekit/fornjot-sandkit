@@ -1,9 +1,7 @@
 use anyhow::Error;
 use deno_core::{
-    error::AnyError as DenoError,
-    include_js_files, op, resolve_url,
-    v8::{self, HandleScope, Local},
-    Extension, FsModuleLoader, JsRuntime, ModuleId, OpState, RuntimeOptions,
+    error::AnyError as DenoError, include_js_files, op, resolve_url, v8, Extension, FsModuleLoader,
+    JsRuntime, ModuleId, OpState, RuntimeOptions,
 };
 use nannou::color::PLUM;
 use std::rc::Rc;
@@ -48,24 +46,21 @@ impl Engine {
     }
 
     pub fn run(&mut self, time: f32) -> Result<(), Error> {
-        let module_ns = self
-            .js
-            .get_module_namespace(self.module_id.unwrap())
-            .unwrap();
+        let module_id = self.module_id.unwrap();
 
-        let context = self.js.global_context();
+        let module_ns = self.js.get_module_namespace(module_id).unwrap();
         let isolate = self.js.v8_isolate();
 
         let module_ns = module_ns.open(isolate);
-        let mut scope = HandleScope::with_context(isolate, context);
+        let mut scope = &mut self.js.handle_scope();
 
         let main_export_name = v8::String::new(&mut scope, "main").unwrap();
         let main_export = module_ns.get(&mut scope, main_export_name.into()).unwrap();
+        let main_export_function = v8::Local::<v8::Function>::try_from(main_export)?;
 
         let time_js = v8::Number::new(&mut scope, time as f64);
         let this = v8::undefined(&mut scope).into();
 
-        let main_export_function = Local::<v8::Function>::try_from(main_export)?;
         main_export_function
             .call(&mut scope, this, &[time_js.into()])
             .unwrap();
