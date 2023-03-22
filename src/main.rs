@@ -67,6 +67,18 @@ fn update(app: &App, model: &mut Model, _update: Update) {
 
     model.runtime.block_on(model.engine.run(app.time)).unwrap();
 
+    /*
+    let n = 5000;
+    let t = app.time * 0.1;
+    for i in 0..n {
+        let a = i as f32 / n as f32;
+        let b = (a + t) % 1.0;
+        let x = (b * PI * 16.0).sin() * 500.0 * a;
+        let y = (b * PI * 16.0).cos() * 500.0 * a;
+        draw.rect().x_y(x, y).w_h(4.0, 4.0).color(PLUM);
+    }
+    */
+
     match model.fps {
         Some(fps) => model.fps = Some((app.fps() + fps) / 2.0),
         None => model.fps = Some(app.fps()),
