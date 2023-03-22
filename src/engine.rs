@@ -63,11 +63,11 @@ impl Engine {
         let main_export = module_ns.get(&mut scope, main_export_name.into()).unwrap();
 
         let time_js = v8::Number::new(&mut scope, time as f64);
-        let null = v8::null(&mut scope).into();
+        let this = v8::undefined(&mut scope).into();
 
-        let main_export_function = Local::<v8::Function>::try_from(main_export).unwrap();
+        let main_export_function = Local::<v8::Function>::try_from(main_export)?;
         main_export_function
-            .call(&mut scope, null, &[time_js.into()])
+            .call(&mut scope, this, &[time_js.into()])
             .unwrap();
 
         Ok(())
