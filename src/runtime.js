@@ -11,11 +11,4 @@ const console = {
   },
 };
 
-const shapes = {
-  rect: (x, y) => {
-    return ops.op_shapes_rect(x, y)
-  },
-}
-
 globalThis.console = console
-globalThis.shapes = shapes

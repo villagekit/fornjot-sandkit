@@ -14,12 +14,12 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn new(draw: nannou::Draw) -> Self {
+    pub fn new() -> Self {
         let js_extension = Extension::builder("runjs")
             .esm(include_js_files!("runtime.js",))
-            .ops(vec![op_shapes_rect::decl()])
+            // .ops(vec![op_shapes_rect::decl()])
             .state(move |state| {
-                state.put::<nannou::Draw>(draw.clone());
+                // state.put::<nannou::Draw>(draw.clone());
             })
             .build();
 
@@ -46,7 +46,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn run(&mut self, time: f32) -> Result<(), Error> {
+    pub async fn run(&mut self) -> Result<(), Error> {
         let module_id = self
             .module_id
             .context("Module id not available. Have you called .compile yet?")?;
@@ -69,11 +69,10 @@ impl Engine {
             let main_export_function = v8::Local::<v8::Function>::try_from(main_export)
                 .context("Export named \"main\" is not a function")?;
 
-            let time_js = v8::Number::new(scope, time as f64);
             let this = v8::undefined(scope).into();
 
             let result = main_export_function
-                .call(scope, this, &[time_js.into()])
+                .call(scope, this, &[])
                 .context("Unable to call main export function")?;
 
             v8::Global::new(scope, result)
@@ -85,6 +84,7 @@ impl Engine {
     }
 }
 
+/*
 #[op(fast)]
 fn op_shapes_rect(state: &mut OpState, x: f32, y: f32) -> Result<(), DenoError> {
     let draw = state.borrow::<nannou::Draw>().clone();
@@ -93,3 +93,4 @@ fn op_shapes_rect(state: &mut OpState, x: f32, y: f32) -> Result<(), DenoError> 
 
     Ok(())
 }
+*/
