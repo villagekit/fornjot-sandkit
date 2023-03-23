@@ -3,7 +3,7 @@ use deno_core::{
     error::AnyError as DenoError, include_js_files, op, url::Url, v8, Extension, JsRuntime,
     ModuleId, OpState, RuntimeOptions,
 };
-use nannou::color::PLUM;
+use fj::{Circle, Shape, Shape2d, Sketch};
 use std::rc::Rc;
 
 use crate::loader::ModuleLoader;
@@ -35,7 +35,7 @@ impl Engine {
         }
     }
 
-    pub async fn compile(&mut self, module_url: Url) -> Result<(), Error> {
+    pub async fn load(&mut self, module_url: Url) -> Result<(), Error> {
         let module_id = self.js.load_side_module(&module_url, None).await?;
         let receiver = self.js.mod_evaluate(module_id);
         self.js.run_event_loop(false).await?;
@@ -46,7 +46,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn run(&mut self) -> Result<(), Error> {
+    pub async fn shape(&mut self) -> Result<Shape, Error> {
         let module_id = self
             .module_id
             .context("Module id not available. Have you called .compile yet?")?;
@@ -61,26 +61,28 @@ impl Engine {
         let result = {
             let scope = &mut self.js.handle_scope();
 
-            let main_export_name = v8::String::new(scope, "main")
-                .context("Unable to create JavaScript string \"main\".")?;
-            let main_export = module_ns
-                .get(scope, main_export_name.into())
-                .context("Unable to get export named \"main\" from module.")?;
-            let main_export_function = v8::Local::<v8::Function>::try_from(main_export)
-                .context("Export named \"main\" is not a function")?;
+            let shape_export_name = v8::String::new(scope, "shape")
+                .context("Unable to create JavaScript string \"shape\".")?;
+            let shape_export = module_ns
+                .get(scope, shape_export_name.into())
+                .context("Unable to get export named \"shape\" from module.")?;
+            let shape_export_function = v8::Local::<v8::Function>::try_from(shape_export)
+                .context("Export named \"shape\" is not a function")?;
 
             let this = v8::undefined(scope).into();
 
-            let result = main_export_function
+            let result = shape_export_function
                 .call(scope, this, &[])
-                .context("Unable to call main export function")?;
+                .context("Unable to call shape export function")?;
 
             v8::Global::new(scope, result)
         };
 
-        self.js.resolve_value(result).await?;
+        let _value = self.js.resolve_value(result).await?;
 
-        Ok(())
+        Ok(Shape::Shape2d(Shape2d::Sketch(Sketch::from_circle(
+            Circle::from_radius(10_f64),
+        ))))
     }
 }
 

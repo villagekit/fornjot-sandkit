@@ -1,5 +1,5 @@
 declare global {
 }
 
-export function draw() {
+export function shape() {
 }
