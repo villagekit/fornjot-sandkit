@@ -10,7 +10,7 @@ anyhow = "1.0.70"
 async-fs = "1.6.0"
 deno_ast = { version = "0.25.0", features = ["transpiling"] }
 deno_core = "0.175.0"
-fj = "0.41.0"
+fj = { version = "0.41.0", features = ["serde"] }
 fj-interop = "0.41.0"
 fj-operations = "0.41.0"
 futures-lite = "1.12.0"

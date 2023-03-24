@@ -1,9 +1,9 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{bail, Context, Error, Result};
 use deno_core::{
-    error::AnyError as DenoError, include_js_files, op, url::Url, v8, Extension, JsRuntime,
-    ModuleId, OpState, RuntimeOptions,
+    error::AnyError as DenoError, include_js_files, op, serde_v8, url::Url, v8, Extension,
+    JsRuntime, ModuleId, OpState, RuntimeOptions,
 };
-use fj::{Circle, Shape, Shape2d, Sketch};
+use fj::{Circle, Difference2d, Group, Shape, Shape2d, Sketch};
 use std::rc::Rc;
 
 use crate::loader::ModuleLoader;
@@ -15,9 +15,12 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Self {
-        let js_extension = Extension::builder("runjs")
+        let js_extension = Extension::builder("sandkit")
             .esm(include_js_files!("runtime.js",))
-            // .ops(vec![op_shapes_rect::decl()])
+            .ops(vec![
+                op_sketch_from_circle::decl(),
+                op_circle_from_radius::decl(),
+            ])
             .state(move |state| {
                 // state.put::<nannou::Draw>(draw.clone());
             })
@@ -46,7 +49,7 @@ impl Engine {
         Ok(())
     }
 
-    pub async fn shape(&mut self) -> Result<Shape, Error> {
+    pub async fn get_shape(&mut self) -> Result<Shape, Error> {
         let module_id = self
             .module_id
             .context("Module id not available. Have you called .compile yet?")?;
@@ -58,9 +61,8 @@ impl Engine {
         let isolate = self.js.v8_isolate();
 
         let module_ns = module_ns.open(isolate);
+        let scope = &mut self.js.handle_scope();
         let result = {
-            let scope = &mut self.js.handle_scope();
-
             let shape_export_name = v8::String::new(scope, "shape")
                 .context("Unable to create JavaScript string \"shape\".")?;
             let shape_export = module_ns
@@ -75,13 +77,49 @@ impl Engine {
                 .call(scope, this, &[])
                 .context("Unable to call shape export function")?;
 
-            v8::Global::new(scope, result)
+            // v8::Global::new(scope, result)
+            result
         };
 
-        let _value = self.js.resolve_value(result).await?;
+        /*
+        let value = self.js.resolve_value(result_global).await?;
+        */
 
-        Ok(Sketch::from_circle(Circle::from_radius(10_f64)).into())
+        let shape = into_shape(scope, result)?;
+
+        println!("value: {:?}", shape);
+
+        Ok(shape)
     }
+}
+
+#[op]
+fn op_sketch_from_circle(circle: Circle) -> Sketch {
+    Sketch::from_circle(circle)
+}
+
+#[op]
+fn op_circle_from_radius(radius: f64) -> Circle {
+    Circle::from_radius(radius)
+}
+
+fn into_shape<'a, 'b, 's>(
+    scope: &'b mut v8::HandleScope<'s>,
+    value: v8::Local<'a, v8::Value>,
+) -> Result<Shape, Error> {
+    let result = serde_v8::from_v8::<Group>(scope, value);
+    if result.is_ok() {
+        return Ok(result.unwrap().into());
+    }
+    let result = serde_v8::from_v8::<Difference2d>(scope, value);
+    if result.is_ok() {
+        return Ok(result.unwrap().into());
+    }
+    let result = serde_v8::from_v8::<Sketch>(scope, value);
+    if result.is_ok() {
+        return Ok(result.unwrap().into());
+    }
+    bail!("Unable to convert value into Shape");
 }
 
 /*

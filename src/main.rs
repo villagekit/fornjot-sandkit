@@ -17,7 +17,7 @@ fn main() -> Result<(), Error> {
 
     future::block_on(engine.load(sketch_path))?;
 
-    let shape = future::block_on(engine.shape())?;
+    let shape = future::block_on(engine.get_shape())?;
     let shape_processor = ShapeProcessor { tolerance: None };
     let processed_shape = shape_processor.process(&shape)?;
 

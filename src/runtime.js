@@ -11,4 +11,18 @@ const console = {
   },
 };
 
+const Sketch = {
+  from_circle: (circle) => {
+    return ops.op_sketch_from_circle(circle)
+  }
+}
+
+const Circle = {
+  from_radius: (radius) => {
+    return ops.op_circle_from_radius(radius)
+  }
+}
+
 globalThis.console = console
+globalThis.Sketch = Sketch
+globalThis.Circle = Circle

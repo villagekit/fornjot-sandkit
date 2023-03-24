@@ -888,6 +888,7 @@ checksum = "3e05ef3fe73fa20805fa4948a80b85493c169406ddcec09d02448350ad0eeea4"
 dependencies = [
  "anyhow",
  "fj-proc",
+ "serde",
 ]
 
 [[package]]
