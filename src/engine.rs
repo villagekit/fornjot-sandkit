@@ -80,9 +80,7 @@ impl Engine {
 
         let _value = self.js.resolve_value(result).await?;
 
-        Ok(Shape::Shape2d(Shape2d::Sketch(Sketch::from_circle(
-            Circle::from_radius(10_f64),
-        ))))
+        Ok(Sketch::from_circle(Circle::from_radius(10_f64)).into())
     }
 }
 
