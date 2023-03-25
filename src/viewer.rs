@@ -2,7 +2,6 @@ use fj_interop::processed_shape::ProcessedShape;
 use kiss3d::{
     light::Light,
     nalgebra::{Point3, UnitQuaternion, Vector3},
-    ncollide3d::procedural::TriMesh,
     resource::Mesh,
     scene::SceneNode,
     window::Window,
@@ -23,7 +22,7 @@ impl Viewer {
         let mut window = Window::new("Sandkit");
 
         let shape_mesh = shape_to_mesh(shape);
-        let mut shape_node = window.add_mesh(shape_mesh, Vector3::new(0.02, 0.02, 0.02));
+        let mut shape_node = window.add_mesh(shape_mesh, Vector3::new(0.1, 0.1, 0.1));
         shape_node.set_color(1.0, 0., 0.);
 
         window.set_light(Light::StickToCamera);

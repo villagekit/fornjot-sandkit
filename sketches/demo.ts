@@ -1,17 +1,3 @@
-declare global {
-  interface SketchInstance {}
-  interface CircleInstance {}
-
-  interface SketchClass {
-    from_circle: (circle: CircleInstance) => SketchInstance
-  }
-  interface CircleClass {
-    from_radius: (radius: number) => CircleInstance
-  }
-  const Sketch: SketchClass
-  const Circle: CircleClass
-}
-
 export const params = [
   {
     name: 'outer',
@@ -23,7 +9,7 @@ export const params = [
     name: 'inner',
     type: 'number',
     default: 0.5,
-    min: ({ outer }) => outer * 0.99,
+    max: ({ outer }) => outer * 0.99,
   },
   {
     name: 'height',
@@ -31,22 +17,51 @@ export const params = [
     default: 1.0,
   },
 ]
-
-export function shape(params) {
-  const outer = 1
-  const inner = 0.5
-  const height = 1
-  // const { outer, inner, height } = params
+export function shape(params: ParamValues) {
+  const { outer, inner, height } = params
   
-  return Sketch.from_circle(Circle.from_radius(outer))
+  const outerEdge = Sketch.fromCircle(Circle.fromRadius(outer))
+  const innerEdge = Sketch.fromCircle(Circle.fromRadius(inner))
 
-  /*
-  const outer_edge = Sketch.from_circle(Circle.from_radius(outer))
-  const inner_edge = Sketch.from_circle(Circle.from_radius(inner))
+  const footprint = Difference2d.fromShapes(outerEdge, innerEdge)
+  const spacer = Sweep.fromPath(footprint, [0, 0, height])
 
-  const footprint = outer_edge.difference(inner_edge)
-  const spacer = footprint.sweep([0, 0, height])
+  console.log('JavaScript shape:', spacer)
 
   return spacer
-  */
 }
+
+/* type helpers */
+
+// TODO derive from param definition
+interface ParamValues {
+  outer: number
+  inner: number
+  height: number
+}
+
+declare global {
+  export class Circle {
+    static fromRadius: (radius: number) => Circle
+  }
+  export class Sketch {
+    static fromCircle: (circle: Circle) => Sketch
+  }
+  interface Difference2dFromShapes {
+    (a: Sketch, b: Sketch): Difference2d
+    (a: Difference2d, b: Sketch): Difference2d
+    (a: Sketch, b: Difference2d): Difference2d
+    (a: Difference2d, b: Difference2d): Difference2d
+  }
+  export class Difference2d {
+    static fromShapes: Difference2dFromShapes
+  }
+  interface SweepFromPath {
+    (shape: Sketch, path: Array<number>): Sweep
+    (shape: Difference2d, path: Array<number>): Sweep
+  }
+  export class Sweep {
+    static fromPath: SweepFromPath
+  }
+}
+
