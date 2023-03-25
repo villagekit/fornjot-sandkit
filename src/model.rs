@@ -157,12 +157,6 @@ fn into_shape<'a, 'b, 's>(
     scope: &'b mut v8::HandleScope<'s>,
     value: v8::Local<'a, v8::Value>,
 ) -> Result<Shape, Error> {
-    let fj_name = v8::String::new(scope, "fj")
-        .context("Unable to create JavaScript string \"fj\".")?
-        .into();
-    let value = v8::Local::<v8::Object>::try_from(value)?;
-    let value = value.get(scope, fj_name).unwrap();
-
     let result = serde_v8::from_v8::<Group>(scope, value);
     if result.is_ok() {
         return Ok(result?.into());
